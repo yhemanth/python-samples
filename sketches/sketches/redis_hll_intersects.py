@@ -1,6 +1,6 @@
 import os
-import redis
 import sys
+import redis
 
 REDIS_PIPELINE_BATCH_SIZE = 10000
 
@@ -24,7 +24,8 @@ class RedisHllIntersects:
         k1_count = self.redis_client.pfcount(k1)
         k2_count = self.redis_client.pfcount(k2)
         k1_k2_count = self.redis_client.pfcount(k1_k2)
-        print "Intersection count: actual: ", len(common_elements), ", hll: ", (k1_count + k2_count - k1_k2_count)
+        print "Intersection count: actual: ", len(common_elements), ", hll: ", (k1_count + k2_count - k1_k2_count), \
+            ", error: ", abs((len(common_elements)-(k1_count + k2_count - k1_k2_count)))*100/len(common_elements)
 
     @staticmethod
     def _common_key_name(k1, k2):
