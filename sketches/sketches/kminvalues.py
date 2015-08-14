@@ -33,7 +33,7 @@ def run_kmin_test():
     expected_cardinality = len(expected_set)
     print "Estimated cardinality: ", estimated_cardinality
     print "Expected cardinality: ", expected_cardinality
-    print "Error percent: ", (float(estimated_cardinality - expected_cardinality) * 100) / expected_cardinality
+    print "Error percent: ", (float(abs(estimated_cardinality - expected_cardinality)) * 100) / expected_cardinality
 
 
 if __name__ == "__main__":
