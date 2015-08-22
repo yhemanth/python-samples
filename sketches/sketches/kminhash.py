@@ -22,16 +22,16 @@ class KMinHash:
         self.redis_client.zadd(self.key, min_hash, element_id)
 
     def estimate_jaccard_coefficient(self, other_min_hash):
-        union_min_hash_name = ":".join(["union", self.key, other_min_hash.key])
+        union_min_hash_name = ":".join(["minhash_union", self.key, other_min_hash.key])
         self.redis_client.delete(union_min_hash_name)
         self.redis_client.zunionstore(union_min_hash_name, [self.key, other_min_hash.key], aggregate='MIN')
         self.redis_client.zremrangebyrank(union_min_hash_name, self.k, -1)
 
-        inter_min_hash_name = ":".join(["inter", union_min_hash_name, self.key, other_min_hash.key])
+        inter_min_hash_name = ":".join(["minhash_inter", union_min_hash_name, self.key, other_min_hash.key])
         self.redis_client.delete(inter_min_hash_name)
         self.redis_client.zinterstore(inter_min_hash_name, [union_min_hash_name, self.key, other_min_hash.key],
                                       aggregate='MIN')
-        return self.redis_client.zcard(inter_min_hash_name) / self.k
+        return float(self.redis_client.zcard(inter_min_hash_name)) / self.k
 
     def __str__(self):
         return self.key + ": " + str(self.redis_client.zrange(self.key, 0, -1, withscores=True))

@@ -2,6 +2,7 @@ import os
 import sys
 
 import redis
+from kminhash import KMinHash
 
 REDIS_PIPELINE_BATCH_SIZE = 10000
 
@@ -16,6 +17,7 @@ class IdSet:
         self.hll_key_name = os.path.basename(ids_file)
         self.ids = set()
         map(lambda x: self.ids.add(x), open(ids_file, 'r').readlines())
+        self.minhash_set = KMinHash(1000, self.redis_client, "mh"+self.hll_key_name)
 
     def add_to_hll(self):
         self.redis_client.delete(self.hll_key_name)
@@ -28,6 +30,8 @@ class IdSet:
                 pipeline.execute()
                 batch_size = REDIS_PIPELINE_BATCH_SIZE
         pipeline.execute()
+        for hll_id in self.ids:
+            self.minhash_set.update_min_hash(hll_id)
 
     def actual_count(self):
         return len(self.ids)
@@ -43,6 +47,13 @@ class IdSet:
         self.redis_client.pfmerge(merged_key_name, self.hll_key_name, other_id_set.hll_key_name)
         intersection_count = self.hll_count() + other_id_set.hll_count() - self.redis_client.pfcount(merged_key_name)
         return merged_key_name, intersection_count
+
+    def intersect_using_kminhash(self, other_id_set):
+        merged_key_name = common_key_name(self.hll_key_name, other_id_set.hll_key_name)
+        self.redis_client.pfmerge(merged_key_name, self.hll_key_name, other_id_set.hll_key_name)
+        union_count = self.redis_client.pfcount(merged_key_name)
+        jaccard_coefficient = self.minhash_set.estimate_jaccard_coefficient(other_id_set.minhash_set)
+        return int(jaccard_coefficient * union_count)
 
     def cleanup(self):
         self.redis_client.delete(self.hll_key_name)
@@ -60,12 +71,13 @@ class RedisHllIntersects:
         id_set2.add_to_hll()
 
         merged_key_name, hll_intersection_count = id_set1.intersect_hlls_using_inclusion_exclusion(id_set2)
+        min_hash_intersection_count = id_set1.intersect_using_kminhash(id_set2)
 
         counts_str = ",".join(map(lambda x: str(x),
                                   [id_set1.actual_count(), id_set1.hll_count(),
                                    id_set2.actual_count(), id_set2.hll_count(),
                                    id_set1.intersection_count(id_set2),
-                                   hll_intersection_count]))
+                                   hll_intersection_count, min_hash_intersection_count]))
         print ",".join([merged_key_name, counts_str])
 
         id_set1.cleanup()
