@@ -17,7 +17,7 @@ class IdSet:
         self.hll_key_name = os.path.basename(ids_file)
         self.ids = set()
         map(lambda x: self.ids.add(x), open(ids_file, 'r').readlines())
-        self.minhash_set = KMinHash(1000, self.redis_client, "mh"+self.hll_key_name)
+        self.minhash_set = KMinHash(400, self.redis_client, "mh"+self.hll_key_name)
 
     def add_to_hll(self):
         self.redis_client.delete(self.hll_key_name)
