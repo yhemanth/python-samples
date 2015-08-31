@@ -54,6 +54,6 @@ if __name__ == "__main__":
 
     s_a = set(set_a)
     s_b = set(set_b)
-    actual_jaccard_coefficient = len(s_a.intersection(s_b)) / len(s_a.union(s_b))
+    actual_jaccard_coefficient = float(len(s_a.intersection(s_b))) / len(s_a.union(s_b))
     print "Actual Jaccard coefficient: ", actual_jaccard_coefficient
 
