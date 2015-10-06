@@ -17,9 +17,33 @@ class IdSet:
         self.hll_key_name = os.path.basename(ids_file)
         self.ids = set()
         map(lambda x: self.ids.add(x), open(ids_file, 'r').readlines())
-        self.minhash_set = KMinHash(minhash_k, self.redis_client, "mh"+self.hll_key_name)
+        self.minhash_set = KMinHash(minhash_k, self.redis_client, "mh" + self.hll_key_name)
 
-    def add_to_hll(self):
+    def add_to_sketches(self, minhash_strategy="mem_optimized"):
+        self.__add_to_hll()
+        if minhash_strategy == "pipelined":
+            self.__add_to_kminhash_pipelined()
+        else:
+            self.__add_to_kminhash_mem_optimized()
+
+    def __add_to_kminhash_mem_optimized(self):
+        for hll_id in self.ids:
+            self.minhash_set.update_min_hash(hll_id)
+
+    def __add_to_kminhash_pipelined(self):
+        self.minhash_set.initialize()
+        batch_size = REDIS_PIPELINE_BATCH_SIZE
+        ids_batch = list()
+        for hll_id in self.ids:
+            ids_batch.append(hll_id)
+            batch_size -= 1
+            if batch_size == 0:
+                self.minhash_set.update_min_hashes_batch(ids_batch)
+                batch_size = REDIS_PIPELINE_BATCH_SIZE
+                ids_batch = list()
+        self.minhash_set.update_min_hashes_batch(ids_batch)
+
+    def __add_to_hll(self):
         self.redis_client.delete(self.hll_key_name)
         pipeline = self.redis_client.pipeline()
         batch_size = REDIS_PIPELINE_BATCH_SIZE
@@ -30,8 +54,6 @@ class IdSet:
                 pipeline.execute()
                 batch_size = REDIS_PIPELINE_BATCH_SIZE
         pipeline.execute()
-        for hll_id in self.ids:
-            self.minhash_set.update_min_hash(hll_id)
 
     def actual_count(self):
         return len(self.ids)
@@ -63,12 +85,12 @@ class RedisHllIntersects:
     def __init__(self, host='127.0.0.1', port=6379):
         self.redis_client = redis.StrictRedis(host, port)
 
-    def intersect_ids(self, ids_file1, ids_file2, minhash_k):
+    def intersect_ids(self, ids_file1, ids_file2, minhash_k, minhash_strategy):
         id_set1 = IdSet(ids_file1, self.redis_client, minhash_k)
-        id_set1.add_to_hll()
+        id_set1.add_to_sketches(minhash_strategy)
 
         id_set2 = IdSet(ids_file2, self.redis_client, minhash_k)
-        id_set2.add_to_hll()
+        id_set2.add_to_sketches(minhash_strategy)
 
         merged_key_name, hll_intersection_count = id_set1.intersect_hlls_using_inclusion_exclusion(id_set2)
         min_hash_intersection_count = id_set1.intersect_using_kminhash(id_set2)
@@ -87,4 +109,4 @@ class RedisHllIntersects:
 
 if __name__ == "__main__":
     redisHllTester = RedisHllIntersects()
-    redisHllTester.intersect_ids(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+    redisHllTester.intersect_ids(sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4])

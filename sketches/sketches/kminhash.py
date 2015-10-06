@@ -21,7 +21,18 @@ class KMinHash:
                 self.redis_client.zremrangebyrank(self.key, -1, -1)
         self.redis_client.zadd(self.key, min_hash, element_id)
 
+    def update_min_hashes_batch(self, ids_batch):
+        pipeline = self.redis_client.pipeline()
+        for element_id in ids_batch:
+            min_hash = mmh3.hash(str(element_id))
+            pipeline.zadd(self.key, min_hash, element_id)
+        pipeline.execute()
+
     def estimate_jaccard_coefficient(self, other_min_hash):
+        min_hash_set_size = self.redis_client.zcard(self.key)
+        if min_hash_set_size > self.k:
+            self.redis_client.zremrangebyrank(self.key, self.k, -1)
+
         union_min_hash_name = ":".join(["minhash_union", self.key, other_min_hash.key])
         self.redis_client.delete(union_min_hash_name)
         self.redis_client.zunionstore(union_min_hash_name, [self.key, other_min_hash.key], aggregate='MIN')
@@ -35,6 +46,10 @@ class KMinHash:
 
     def __str__(self):
         return self.key + ": " + str(self.redis_client.zrange(self.key, 0, -1, withscores=True))
+
+    def initialize(self):
+        self.redis_client.delete(self.key)
+
 
 if __name__ == "__main__":
     set_a = [3, 1, 4, 1, 5, 7, 9, 2]

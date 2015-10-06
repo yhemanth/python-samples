@@ -1,9 +1,11 @@
 #!/bin/sh
 
+required_args=7
+
 # Validate
-if [ $# -lt 6 ]
+if [ $# -lt ${required_args} ]
 then
-  echo "Usage: $0 num_runs set_a_cardinality set_b_cardinality intersection_cardinality data_dir minhash_k [generate|profile]*";
+  echo "Usage: $0 num_runs set_a_cardinality set_b_cardinality intersection_cardinality data_dir minhash_k mem_optimized|pipelined [generate|profile]*";
   exit -1;
 fi
 
@@ -14,7 +16,8 @@ card_b=$3
 card_a_n_b=$4
 data_dir=$5
 minhash_k=$6
-shift 6
+minhash_strategy=$7
+shift ${required_args}
 
 # process optional arguments
 generate_data=0
@@ -48,5 +51,5 @@ do
   then
     profile_string="-m cProfile -o ${file_name_prefix}.prof"
   fi
-  python ${profile_string} sketches/sketches/redis_hll_intersects.py ${data_dir}/${file_name_prefix}_1 ${data_dir}/${file_name_prefix}_2 ${minhash_k};
+  python ${profile_string} sketches/sketches/redis_hll_intersects.py ${data_dir}/${file_name_prefix}_1 ${data_dir}/${file_name_prefix}_2 ${minhash_k} ${minhash_strategy};
 done
