@@ -9,17 +9,12 @@ fi
 
 # process required arguments
 num_runs=$1
-shift
-card_a=$1
-shift
-card_b=$1
-shift
-card_a_n_b=$1
-shift
-data_dir=$1
-shift
-minhash_k=$1
-shift
+card_a=$2
+card_b=$3
+card_a_n_b=$4
+data_dir=$5
+minhash_k=$6
+shift 6
 
 # process optional arguments
 generate_data=0
