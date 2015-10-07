@@ -1,5 +1,6 @@
 import mmh3 as mmh3
 import redis
+import sys
 
 
 class KMinHash:
@@ -9,18 +10,20 @@ class KMinHash:
         self.k = k
         self.redis_client.delete(self.key)
         self.elements_added = 0
+        self.max_min_hash = -sys.maxint - 1
 
     def update_min_hash(self, element_id):
         min_hash = mmh3.hash(str(element_id))
         if self.elements_added == self.k:
-            max_score = self.redis_client.zrange(self.key, -1, -1, withscores=True)[0][1]
             # Is new element going to change k min hashes?
-            if min_hash >= max_score:
+            if min_hash >= self.max_min_hash:
                 return
             else:
-                # Remove the element with max score
+                # Remove the element with max score & update max value of min_hash
                 self.elements_added -= self.redis_client.zremrangebyrank(self.key, -1, -1)
+                self.max_min_hash = self.redis_client.zrange(self.key, -1, -1, withscores=True)[0][1]
         self.elements_added += self.redis_client.zadd(self.key, min_hash, element_id)
+        self.max_min_hash = max(self.max_min_hash, min_hash)
 
     def update_min_hashes_batch(self, ids_batch):
         pipeline = self.redis_client.pipeline()
