@@ -19,7 +19,7 @@ class KMinHash:
                 return
             else:
                 # Remove the element with max score
-                self.redis_client.zremrangebyrank(self.key, -1, -1)
+                self.elements_added -= self.redis_client.zremrangebyrank(self.key, -1, -1)
         self.elements_added += self.redis_client.zadd(self.key, min_hash, element_id)
 
     def update_min_hashes_batch(self, ids_batch):
