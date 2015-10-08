@@ -23,6 +23,8 @@ class IdSet:
         self.__add_to_hll()
         if minhash_strategy == "pipelined":
             self.__add_to_kminhash_pipelined()
+        elif minhash_strategy == "lua":
+            self.__add_to_kminhash_lua()
         else:
             self.__add_to_kminhash_mem_optimized()
 
@@ -42,6 +44,19 @@ class IdSet:
                 batch_size = REDIS_PIPELINE_BATCH_SIZE
                 ids_batch = list()
         self.minhash_set.update_min_hashes_batch(ids_batch)
+
+    def __add_to_kminhash_lua(self):
+        self.minhash_set.initialize()
+        batch_size = REDIS_PIPELINE_BATCH_SIZE
+        ids_batch = list()
+        for hll_id in self.ids:
+            ids_batch.append(hll_id)
+            batch_size -= 1
+            if batch_size == 0:
+                self.minhash_set.update_min_hashes_lua(ids_batch)
+                batch_size = REDIS_PIPELINE_BATCH_SIZE
+                ids_batch = list()
+        self.minhash_set.update_min_hashes_lua(ids_batch)
 
     def __add_to_hll(self):
         self.redis_client.delete(self.hll_key_name)

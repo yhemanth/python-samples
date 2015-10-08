@@ -5,7 +5,7 @@ required_args=7
 # Validate
 if [ $# -lt ${required_args} ]
 then
-  echo "Usage: $0 num_runs set_a_cardinality set_b_cardinality intersection_cardinality data_dir minhash_k mem_optimized|pipelined [generate|profile]*";
+  echo "Usage: $0 num_runs set_a_cardinality set_b_cardinality intersection_cardinality data_dir minhash_k mem_optimized|lua|pipelined [generate|profile]*";
   exit -1;
 fi
 

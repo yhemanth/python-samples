@@ -13,7 +13,7 @@ class KMinHash:
         self.max_min_hash = -sys.maxint - 1
 
     def update_min_hash(self, element_id):
-        min_hash = mmh3.hash(str(element_id))
+        min_hash = self.__element_hash(element_id)
         if self.elements_added == self.k:
             # Is new element going to change k min hashes?
             if min_hash >= self.max_min_hash:
@@ -28,8 +28,18 @@ class KMinHash:
     def update_min_hashes_batch(self, ids_batch):
         pipeline = self.redis_client.pipeline()
         for element_id in ids_batch:
-            min_hash = mmh3.hash(str(element_id))
+            min_hash = self.__element_hash(element_id)
             pipeline.zadd(self.key, min_hash, element_id)
+        pipeline.execute()
+
+    def __element_hash(self, element_id):
+        return mmh3.hash(str(element_id))
+
+    def update_min_hashes_lua(self, ids_batch):
+        pipeline = self.redis_client.pipeline()
+        for element_id in ids_batch:
+            self.redis_client.evalsha("431e6c32b75233f1acd248d4245201d778320609", 1, self.key, self.k,
+                                      self.__element_hash(element_id), element_id)
         pipeline.execute()
 
     def estimate_jaccard_coefficient(self, other_min_hash):
