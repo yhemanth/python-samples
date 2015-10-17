@@ -30,6 +30,7 @@ class KMinHash:
         for element_id in ids_batch:
             min_hash = self.__element_hash(element_id)
             pipeline.zadd(self.key, min_hash, element_id)
+        pipeline.zremrangebyrank(self.key, self.k, -1)
         pipeline.execute()
 
     def __element_hash(self, element_id):
