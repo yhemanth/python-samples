@@ -81,19 +81,18 @@ class IdSet:
 
     def intersect_hlls_using_inclusion_exclusion(self, other_id_set):
         merged_key_name = common_key_name(self.hll_key_name, other_id_set.hll_key_name)
+        self.redis_client.delete(merged_key_name)
         self.redis_client.pfmerge(merged_key_name, self.hll_key_name, other_id_set.hll_key_name)
         intersection_count = self.hll_count() + other_id_set.hll_count() - self.redis_client.pfcount(merged_key_name)
         return merged_key_name, intersection_count
 
     def intersect_using_kminhash(self, other_id_set):
         merged_key_name = common_key_name(self.hll_key_name, other_id_set.hll_key_name)
+        self.redis_client.delete(merged_key_name)
         self.redis_client.pfmerge(merged_key_name, self.hll_key_name, other_id_set.hll_key_name)
         union_count = self.redis_client.pfcount(merged_key_name)
         jaccard_coefficient = self.minhash_set.estimate_jaccard_coefficient(other_id_set.minhash_set)
         return int(jaccard_coefficient * union_count)
-
-    def cleanup(self):
-        self.redis_client.delete(self.hll_key_name)
 
 
 class RedisHllIntersects:
@@ -117,8 +116,6 @@ class RedisHllIntersects:
                                    hll_intersection_count, min_hash_intersection_count]))
         print ",".join([merged_key_name, counts_str])
 
-        id_set1.cleanup()
-        id_set2.cleanup()
         self.redis_client.delete(merged_key_name)
 
 
