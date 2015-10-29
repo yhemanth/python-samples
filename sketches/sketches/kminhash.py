@@ -39,7 +39,7 @@ class KMinHash:
     def update_min_hashes_lua(self, ids_batch):
         pipeline = self.redis_client.pipeline()
         for element_id in ids_batch:
-            self.redis_client.evalsha("431e6c32b75233f1acd248d4245201d778320609", 1, self.key, self.k,
+            pipeline.evalsha("431e6c32b75233f1acd248d4245201d778320609", 1, self.key, self.k,
                                       self.__element_hash(element_id), element_id)
         pipeline.execute()
 
